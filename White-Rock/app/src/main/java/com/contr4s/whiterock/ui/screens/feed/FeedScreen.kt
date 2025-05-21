@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -39,6 +40,7 @@ fun FeedScreen(navController: NavController, viewModel: FeedViewModel = hiltView
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.testTag("topAppBar"),
                 title = { Text("Лента") },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background

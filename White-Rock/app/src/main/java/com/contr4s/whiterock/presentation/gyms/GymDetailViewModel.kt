@@ -40,22 +40,43 @@ class GymDetailViewModel @Inject constructor(
     
     private fun loadGym(gymId: UUID) = intent {
         reduce { state.copy(isLoading = true) }
+        
         val gym = getGymDetailUseCase(gymId)
-        val filtered = filterRoutes(gym?.routes.orEmpty(), state.selectedFilter)
-        reduce { state.copy(gym = gym, isLoading = false, filteredRoutes = filtered) }
+        val routes = gym?.routes ?: emptyList()
+        val filtered = filterRoutes(routes, state.selectedFilter)
+        
+        reduce { 
+            state.copy(
+                gym = gym,
+                filteredRoutes = filtered,
+                isLoading = false
+            )
+        }
     }
     
     private fun changeFilter(filter: RouteFilter) = intent {
-        val routes = state.gym?.routes.orEmpty()
+        val routes = state.gym?.routes ?: emptyList()
         val filtered = filterRoutes(routes, filter)
-        reduce { state.copy(selectedFilter = filter, filteredRoutes = filtered) }
+        
+        reduce {
+            state.copy(
+                selectedFilter = filter,
+                filteredRoutes = filtered
+            )
+        }
     }
 
     private fun filterRoutes(routes: List<Route>, filter: RouteFilter): List<Route> {
         return when (filter) {
             RouteFilter.ALL -> routes
-            RouteFilter.BOULDER -> routes.filter { it.type.contains("боулдеринг", ignoreCase = true) }
-            RouteFilter.SPORT -> routes.filter { it.type.contains("трудность", ignoreCase = true) }
+            RouteFilter.BOULDER -> routes.filter {
+                it.type.contains("боулдеринг", ignoreCase = true) ||
+                it.type.contains("boulder", ignoreCase = true)
+            }
+            RouteFilter.SPORT -> routes.filter {
+                it.type.contains("трудность", ignoreCase = true) ||
+                it.type.contains("sport", ignoreCase = true)
+            }
         }
     }
 }

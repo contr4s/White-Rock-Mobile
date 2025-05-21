@@ -1,6 +1,7 @@
 package com.contr4s.whiterock.domain.usecase
 
 import com.contr4s.whiterock.data.model.Route
+import com.contr4s.whiterock.data.model.SampleData
 import com.contr4s.whiterock.data.repository.RoutesRepository
 import javax.inject.Inject
 

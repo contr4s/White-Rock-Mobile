@@ -24,7 +24,7 @@ class FriendsRepositoryImpl @Inject constructor() : FriendsRepository {
         }
     }
     
-    private fun getFriendsList(): List<User> {
+    internal fun getFriendsList(): List<User> {
         val currentUser = SampleData.getCurrentUser()
         return SampleData.users.filter { user -> 
             currentUser.friends.contains(user.id) 

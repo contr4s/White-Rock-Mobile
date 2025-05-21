@@ -10,6 +10,7 @@ import org.orbitmvi.orbit.syntax.simple.reduce
 import java.util.UUID
 import com.contr4s.whiterock.data.model.Route
 import com.contr4s.whiterock.data.model.SampleData
+import com.contr4s.whiterock.domain.usecase.GetRoutesUseCase
 
 sealed class RoutesIntent {
     object LoadRoutes : RoutesIntent()
@@ -32,7 +33,9 @@ data class RoutesState(
 )
 
 @HiltViewModel
-class RoutesViewModel @Inject constructor() : ViewModel(), ContainerHost<RoutesState, Nothing> {
+class RoutesViewModel @Inject constructor(
+    private val getRoutesUseCase: GetRoutesUseCase
+) : ViewModel(), ContainerHost<RoutesState, Nothing> {
     override val container = container<RoutesState, Nothing>(RoutesState())
 
     fun onIntent(intent: RoutesIntent) {
@@ -49,7 +52,7 @@ class RoutesViewModel @Inject constructor() : ViewModel(), ContainerHost<RoutesS
 
     private fun loadRoutes() = intent {
         reduce { state.copy(isLoading = true) }
-        val routes = SampleData.routes
+        val routes = getRoutesUseCase()
         reduce {
             state.copy(
                 routes = routes,
@@ -83,8 +86,16 @@ class RoutesViewModel @Inject constructor() : ViewModel(), ContainerHost<RoutesS
     }
 
     private fun resetFilters() = intent {
-        val filtered = filterRoutes(state.routes, state.searchQuery, null, null)
-        reduce { state.copy(selectedGymId = null, selectedDifficulty = null, filteredRoutes = filtered, showFilterDialog = false) }
+        val filtered = filterRoutes(state.routes, "", null, null)
+        reduce { 
+            state.copy(
+                selectedGymId = null, 
+                selectedDifficulty = null, 
+                searchQuery = "",
+                filteredRoutes = filtered, 
+                showFilterDialog = false
+            ) 
+        }
     }
 
     private fun filterRoutes(

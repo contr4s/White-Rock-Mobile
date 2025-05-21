@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -52,6 +53,7 @@ fun EditProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                modifier = Modifier.testTag("topAppBar"),
                 title = { Text("Редактировать профиль") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {

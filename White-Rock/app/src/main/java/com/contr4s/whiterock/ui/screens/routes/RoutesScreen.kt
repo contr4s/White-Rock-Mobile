@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,6 +42,7 @@ fun RoutesScreen(navController: NavController, viewModel: RoutesViewModel = hilt
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.testTag("topAppBar"),
                 title = { Text("Трассы", style = MaterialTheme.typography.headlineMedium) },
                 actions = {
                     IconButton(onClick = { viewModel.onIntent(RoutesIntent.ShowFilterDialog) }) {
