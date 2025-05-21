@@ -22,47 +22,42 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.contr4s.whiterock.data.model.SampleData
+import com.contr4s.whiterock.presentation.routes.RouteDetailsIntent
+import com.contr4s.whiterock.presentation.routes.RouteDetailsViewModel
 import com.contr4s.whiterock.ui.navigation.NavRoutes
 import com.contr4s.whiterock.ui.theme.Blue
 import com.contr4s.whiterock.ui.theme.DarkGray
+import com.contr4s.whiterock.ui.theme.WhiteRockTheme
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RouteDetailsScreen(navController: NavController, routeId: String) {
-    val route = remember { 
-        try {
-            val uuid = UUID.fromString(routeId)
-            SampleData.getRouteById(uuid)
-        } catch (e: Exception) {
-            null
-        }
+fun RouteDetailsScreen(
+    navController: NavController, 
+    routeId: String, 
+    viewModel: RouteDetailsViewModel = hiltViewModel()
+) {
+    val state = viewModel.container.stateFlow.collectAsStateWithLifecycle().value
+    val route = state.route
+    val comments = state.comments
+    val commentText = state.commentText
+    val userRating = state.userRating
+    val isLoading = state.isLoading
+
+    LaunchedEffect(routeId) {
+        viewModel.onIntent(RouteDetailsIntent.LoadRoute(UUID.fromString(routeId)))
     }
-    
-    val comments = remember { 
-        if (route != null) {
-            try {
-                val uuid = UUID.fromString(routeId)
-                SampleData.getCommentsByRouteId(uuid)
-            } catch (e: Exception) {
-                emptyList()
-            }
-        } else {
-            emptyList()
-        }
-    }
-    
-    var commentText by remember { mutableStateOf("") }
-    var userRating by remember { mutableStateOf<Int?>(null) }
-    
-    val scrollState = rememberScrollState()
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -78,11 +73,18 @@ fun RouteDetailsScreen(navController: NavController, routeId: String) {
             )
         }
     ) { paddingValues ->
+        if (isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
         if (route == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 Text("Маршрут не найден")
@@ -90,6 +92,7 @@ fun RouteDetailsScreen(navController: NavController, routeId: String) {
             return@Scaffold
         }
         
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -242,7 +245,7 @@ fun RouteDetailsScreen(navController: NavController, routeId: String) {
                     
                     Row(modifier = Modifier.fillMaxWidth()) {
                         repeat(5) { index ->
-                            val starFilled = userRating != null && index < userRating!!
+                            val starFilled = userRating != null && index < userRating
                             Icon(
                                 imageVector = Icons.Filled.Star,
                                 contentDescription = "Звезда ${index + 1}",
@@ -250,7 +253,7 @@ fun RouteDetailsScreen(navController: NavController, routeId: String) {
                                 modifier = Modifier
                                     .size(32.dp)
                                     .clickable {
-                                        userRating = index + 1
+                                        viewModel.onIntent(RouteDetailsIntent.UpdateUserRating(index + 1))
                                     }
                                     .padding(4.dp)
                             )
@@ -277,13 +280,13 @@ fun RouteDetailsScreen(navController: NavController, routeId: String) {
                     
                     OutlinedTextField(
                         value = commentText,
-                        onValueChange = { commentText = it },
+                        onValueChange = { viewModel.onIntent(RouteDetailsIntent.UpdateCommentText(it)) },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("Добавьте комментарий...") },
                         trailingIcon = {
                             IconButton(
                                 onClick = {
-                                    commentText = ""
+                                    viewModel.onIntent(RouteDetailsIntent.SendComment)
                                 },
                                 enabled = commentText.isNotBlank()
                             ) {
@@ -396,6 +399,34 @@ private fun getGradeColor(grade: String): Color {
         grade.startsWith("8") -> Color(0xFF9C27B0)
         grade.startsWith("9") -> Color(0xFF673AB7)
         else -> Color(0xFF212121)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RouteDetailsScreenPreview() {
+    WhiteRockTheme {
+        RouteDetailsScreen(
+            navController = rememberNavController(),
+            routeId = SampleData.routes.firstOrNull()?.id.toString(),
+            viewModel = hiltViewModel()
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun CommentItemPreview() {
+    WhiteRockTheme {
+        CommentItem(
+            comment = SampleData.Comment(
+                user = SampleData.users.first(),
+                route = SampleData.routes.first(),
+                text = "Отличная трасса, но сложная в конце!",
+                timestamp = System.currentTimeMillis(),
+                rating = 4
+            )
+        )
     }
 }
 

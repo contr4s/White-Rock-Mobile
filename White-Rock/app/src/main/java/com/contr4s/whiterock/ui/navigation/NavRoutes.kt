@@ -9,6 +9,7 @@ object NavRoutes {
     const val ROUTE_DETAILS = "route_details/{routeId}"
     const val PROFILE = "profile"
     const val PROFILE_ID = "profile/{userId}"
+    const val EDIT_PROFILE = "edit_profile"
     
     fun gymDetails(gymId: String) = "gym_details/$gymId"
     fun routeDetails(routeId: String) = "route_details/$routeId"

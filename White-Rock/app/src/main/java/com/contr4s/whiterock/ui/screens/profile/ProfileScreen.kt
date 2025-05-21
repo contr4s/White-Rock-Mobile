@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.contr4s.whiterock.data.model.SampleData
@@ -33,51 +34,58 @@ import com.contr4s.whiterock.data.model.User
 import com.contr4s.whiterock.ui.screens.shared.PostItem
 import com.contr4s.whiterock.ui.theme.Blue
 import com.contr4s.whiterock.ui.theme.DarkGray
+import com.contr4s.whiterock.ui.theme.WhiteRockTheme
+import com.contr4s.whiterock.presentation.profile.ProfileViewModel
+import com.contr4s.whiterock.presentation.profile.ProfileIntent
+import androidx.hilt.navigation.compose.hiltViewModel
 import java.util.UUID
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(navController: NavController, userId: String?) {
-    val isCurrentUser = userId == null || userId == SampleData.CURRENT_USER_ID.toString()
-    
-    val user = remember {
-        if (isCurrentUser) {
-            SampleData.getCurrentUser(SampleData.users)
-        } else {
-            try {
-                val uuid = UUID.fromString(userId)
-                SampleData.getUserById(uuid, SampleData.users) ?: SampleData.getCurrentUser(SampleData.users)
-            } catch (e: Exception) {
-                SampleData.getCurrentUser(SampleData.users)
-            }
+fun ProfileScreen(
+    navController: NavController,
+    userId: String?,
+    viewModel: ProfileViewModel = hiltViewModel()
+) {
+    val state = viewModel.container.stateFlow.collectAsStateWithLifecycle().value
+    val user = state.user
+    val isLoading = state.isLoading
+    val isCurrentUser = userId == null || userId == com.contr4s.whiterock.data.model.SampleData.CURRENT_USER_ID.toString()
+
+    LaunchedEffect(userId) {
+        val targetUserId = if (userId == null) null else UUID.fromString(userId)
+        viewModel.onIntent(ProfileIntent.LoadProfile(targetUserId))
+    }
+
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
         }
+        return
     }
-    
-    val userPosts = remember {
-        SampleData.getPostsByUserId(user.id, SampleData.posts).sortedByDescending { it.timestamp }
+    if (user == null) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Пользователь не найден")
+        }
+        return
     }
-    
+
     var selectedTab by remember { mutableStateOf(0) }
     val tabs = listOf("Посты", "Статистика")
-    
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(user.name) },
                 actions = {
                     if (isCurrentUser) {
-                        IconButton(onClick = {  }) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Настройки"
-                            )
+                        IconButton(onClick = { navController.navigate("edit_profile") }) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Редактировать профиль")
                         }
                     } else {
-                        IconButton(onClick = {  }) {
-                            Icon(
-                                imageVector = Icons.Default.PersonAdd,
-                                contentDescription = "Добавить в друзья"
-                            )
+                        IconButton(onClick = { viewModel.onIntent(ProfileIntent.AddFriend(UUID.fromString(userId))) }) {
+                            Icon(Icons.Filled.PersonAdd, contentDescription = "Добавить в друзья")
                         }
                     }
                 },
@@ -88,77 +96,45 @@ fun ProfileScreen(navController: NavController, userId: String?) {
         }
     ) { paddingValues ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+            modifier = Modifier.padding(paddingValues)
         ) {
             ProfileHeader(
-                user = user, 
+                user = user,
                 isCurrentUser = isCurrentUser,
-                onEditProfileClick = {  }
+                onEditProfileClick = { navController.navigate("edit_profile") }
             )
-            
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = MaterialTheme.colorScheme.background,
-                contentColor = Blue,
-                indicator = { tabPositions ->
-                    SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        height = 2.dp,
-                        color = Blue
-                    )
-                }
+                modifier = Modifier.fillMaxWidth()
             ) {
                 tabs.forEachIndexed { index, title ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                        text = { Text(title) }
                     )
                 }
             }
-            
             when (selectedTab) {
                 0 -> {
-                    if (userPosts.isEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = if (isCurrentUser) "У вас пока нет постов" else "У пользователя пока нет постов",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = DarkGray
+                    val userPosts = remember(user.id) {
+                        com.contr4s.whiterock.data.model.SampleData.getPostsByUserId(user.id, com.contr4s.whiterock.data.model.SampleData.posts).sortedByDescending { it.timestamp }
+                    }
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(userPosts) { post ->
+                            com.contr4s.whiterock.ui.screens.shared.PostItem(
+                                post = post,
+                                isLiked = post.isLiked,
+                                likesCount = post.likesCount,
+                                onUserClick = { userId -> navController.navigate("profile/$userId") },
+                                onGymClick = { gymId -> navController.navigate("gym_details/$gymId") },
+                                onLikeClick = { postId -> viewModel.onIntent(ProfileIntent.ToggleLike(postId)) }
                             )
-                        }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 16.dp)
-                        ) {
-                            items(userPosts) { post ->
-                                PostItem(
-                                    post = post,
-                                    onUserClick = {  },
-                                    onGymClick = { gymId ->
-                                    },
-                                    onLikeClick = { postId ->
-                                    }
-                                )
-                            }
                         }
                     }
                 }
                 1 -> {
-                    UserStatistics(user = user)
+                    UserStatistics(user)
                 }
             }
         }
@@ -447,5 +423,11 @@ fun StatRow(
 @Preview(showBackground = true)
 @Composable
 fun ProfileScreenPreview() {
-    ProfileScreen(navController = androidx.navigation.compose.rememberNavController(), userId = null)
+    WhiteRockTheme {
+        ProfileScreen(
+            navController = rememberNavController(),
+            userId = null,
+            viewModel = hiltViewModel()
+        )
+    }
 }

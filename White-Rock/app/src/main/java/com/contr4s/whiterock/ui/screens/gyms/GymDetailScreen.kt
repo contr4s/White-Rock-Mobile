@@ -31,29 +31,26 @@ import com.contr4s.whiterock.ui.screens.shared.getGradeColor
 import com.contr4s.whiterock.ui.theme.Blue
 import com.contr4s.whiterock.ui.theme.DarkGray
 import java.util.*
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.contr4s.whiterock.presentation.gyms.GymDetailViewModel
+import com.contr4s.whiterock.presentation.gyms.GymDetailIntent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GymDetailScreen(navController: NavController, gymId: String) {
-    val gym = remember { 
-        try {
-            val uuid = UUID.fromString(gymId)
-            SampleData.getGymById(uuid)
-        } catch (e: Exception) {
-            null
-        }
+fun GymDetailScreen(
+    navController: NavController,
+    gymId: String,
+    viewModel: GymDetailViewModel = hiltViewModel()
+) {
+    val state = viewModel.container.stateFlow.collectAsState().value
+    val gym = state.gym
+    val selectedFilter = state.selectedFilter
+    val filteredRoutes = state.filteredRoutes
+
+    LaunchedEffect(gymId) {
+        viewModel.onIntent(GymDetailIntent.LoadGym(UUID.fromString(gymId)))
     }
-    
-    val routes = remember { gym?.routes ?: emptyList() }
-    var selectedFilter by remember { mutableStateOf(RouteFilter.ALL) }
-    val filteredRoutes = remember(routes, selectedFilter) {
-        when (selectedFilter) {
-            RouteFilter.ALL -> routes
-            RouteFilter.BOULDER -> routes.filter { it.type.contains("боулдеринг", ignoreCase = true) }
-            RouteFilter.SPORT -> routes.filter { it.type.contains("трудность", ignoreCase = true) }
-        }
-    }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -69,11 +66,18 @@ fun GymDetailScreen(navController: NavController, gymId: String) {
             )
         }
     ) { paddingValues ->
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+            return@Scaffold
+        }
         if (gym == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 Text("Зал не найден")
@@ -82,9 +86,7 @@ fun GymDetailScreen(navController: NavController, gymId: String) {
         }
         
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+            modifier = Modifier.fillMaxSize().padding(paddingValues)
         ) {
             item {
                 AsyncImage(
@@ -290,7 +292,7 @@ fun GymDetailScreen(navController: NavController, gymId: String) {
                         RouteFilter.values().forEach { filter ->
                             FilterChip(
                                 selected = selectedFilter == filter,
-                                onClick = { selectedFilter = filter },
+                                onClick = { viewModel.onIntent(GymDetailIntent.ChangeFilter(filter)) },
                                 label = { Text(filter.label) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Blue,
@@ -305,9 +307,7 @@ fun GymDetailScreen(navController: NavController, gymId: String) {
             if (filteredRoutes.isEmpty()) {
                 item {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

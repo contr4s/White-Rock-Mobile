@@ -32,6 +32,8 @@ import java.util.*
 @Composable
 fun PostItem(
     post: Post,
+    isLiked: Boolean,
+    likesCount: Int,
     onUserClick: (UUID) -> Unit,
     onGymClick: (UUID) -> Unit,
     onLikeClick: (UUID) -> Unit
@@ -39,9 +41,6 @@ fun PostItem(
     val context = LocalContext.current
     val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
     val formattedDate = dateFormat.format(Date(post.timestamp))
-    
-    var isLiked by remember { mutableStateOf(false) }
-    var likesCount by remember { mutableStateOf(0) }
 
     Card(
         modifier = Modifier
@@ -174,11 +173,7 @@ fun PostItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = { 
-                        isLiked = !isLiked
-                        likesCount = if (isLiked) likesCount + 1 else likesCount - 1
-                        onLikeClick(post.id) 
-                    }
+                    onClick = { onLikeClick(post.id) }
                 ) {
                     Icon(
                         imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,

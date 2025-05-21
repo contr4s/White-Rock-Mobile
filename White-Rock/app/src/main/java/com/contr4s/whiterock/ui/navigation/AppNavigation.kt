@@ -21,6 +21,7 @@ import com.contr4s.whiterock.ui.screens.feed.FeedScreen
 import com.contr4s.whiterock.ui.screens.friends.FriendsScreen
 import com.contr4s.whiterock.ui.screens.gyms.GymDetailScreen
 import com.contr4s.whiterock.ui.screens.gyms.GymsScreen
+import com.contr4s.whiterock.ui.screens.profile.EditProfileScreen
 import com.contr4s.whiterock.ui.screens.profile.ProfileScreen
 import com.contr4s.whiterock.ui.screens.routes.RouteDetailsScreen
 import com.contr4s.whiterock.ui.screens.routes.RoutesScreen
@@ -72,6 +73,9 @@ fun AppNavigation() {
             ) { backStackEntry ->
                 val userId = backStackEntry.arguments?.getString("userId") ?: ""
                 ProfileScreen(navController, userId)
+            }
+            composable(NavRoutes.EDIT_PROFILE) {
+                EditProfileScreen(navController)
             }
         }
     }

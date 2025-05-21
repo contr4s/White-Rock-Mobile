@@ -3,6 +3,8 @@ package com.contr4s.whiterock.ui.screens.feed
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,28 +17,23 @@ import com.contr4s.whiterock.data.model.SampleData
 import com.contr4s.whiterock.ui.navigation.NavRoutes
 import com.contr4s.whiterock.ui.screens.shared.PostItem
 import com.contr4s.whiterock.ui.theme.DarkGray
-import java.util.UUID
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.contr4s.whiterock.presentation.feed.FeedType
+import com.contr4s.whiterock.presentation.feed.FeedViewModel
+import com.contr4s.whiterock.presentation.feed.FeedIntent
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FeedScreen(navController: NavController) {
-    val currentUser = remember { SampleData.getCurrentUser() }
+fun FeedScreen(navController: NavController, viewModel: FeedViewModel = hiltViewModel()) {
+    val state = viewModel.container.stateFlow.collectAsStateWithLifecycle().value
+    
+    // Bottom sheet state
+    val sheetState = rememberModalBottomSheetState()
+    var showBottomSheet by remember { mutableStateOf(false) }
 
-    var allPosts by remember { mutableStateOf<List<Post>>(emptyList()) }
     LaunchedEffect(Unit) {
-        allPosts = SampleData.getAllPosts().sortedByDescending { it.timestamp }
-    }
-
-    var feedType by remember { mutableStateOf(FeedType.ALL) }
-
-    val filteredPosts = remember(allPosts, feedType) {
-        when (feedType) {
-            FeedType.ALL -> allPosts
-            FeedType.FRIENDS -> {
-                val friendIds = currentUser.friends
-                allPosts.filter { post -> friendIds.contains(post.user.id) }
-            }
-        }
+        viewModel.onIntent(FeedIntent.LoadPosts)
     }
 
     Scaffold(
@@ -47,6 +44,18 @@ fun FeedScreen(navController: NavController) {
                     containerColor = MaterialTheme.colorScheme.background
                 )
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showBottomSheet = true },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Добавить тренировку",
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -54,42 +63,34 @@ fun FeedScreen(navController: NavController) {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            TabRow(
-                selectedTabIndex = feedType.ordinal,
-                contentColor = MaterialTheme.colorScheme.primary,
-                divider = {}
-            ) {
-                FeedType.values().forEachIndexed { index, type ->
-                    Tab(
-                        selected = feedType.ordinal == index,
-                        onClick = { feedType = type },
-                        text = { Text(type.title) }
-                    )
-                }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                FilterChip(
+                    selected = state.feedType == FeedType.ALL,
+                    onClick = { viewModel.onIntent(FeedIntent.ChangeFeedType(FeedType.ALL)) },
+                    label = { Text("Все") }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                FilterChip(
+                    selected = state.feedType == FeedType.FRIENDS,
+                    onClick = { viewModel.onIntent(FeedIntent.ChangeFeedType(FeedType.FRIENDS)) },
+                    label = { Text("Друзья") }
+                )
             }
 
-            if (filteredPosts.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = when (feedType) {
-                            FeedType.ALL -> "В ленте пока нет постов"
-                            FeedType.FRIENDS -> "Ваши друзья ещё не публиковали посты"
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = DarkGray
-                    )
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    items(filteredPosts) { post ->
+                    items(state.posts) { post ->
                         PostItem(
                             post = post,
+                            isLiked = post.isLiked,
+                            likesCount = post.likesCount,
                             onUserClick = { userId ->
                                 navController.navigate(NavRoutes.profile(userId.toString()))
                             },
@@ -97,11 +98,28 @@ fun FeedScreen(navController: NavController) {
                                 navController.navigate(NavRoutes.gymDetails(gymId.toString()))
                             },
                             onLikeClick = { postId ->
+                                viewModel.onIntent(FeedIntent.ToggleLike(postId))
                             }
                         )
                     }
                 }
             }
+        }
+    }
+    
+    // Show bottom sheet when requested
+    if (showBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showBottomSheet = false },
+            sheetState = sheetState
+        ) {
+            AddSessionSheet(
+                onDismissRequest = { showBottomSheet = false },
+                onSessionAdded = { newPost ->
+                    viewModel.onIntent(FeedIntent.AddPost(newPost))
+                    showBottomSheet = false
+                }
+            )
         }
     }
 }
@@ -110,9 +128,4 @@ fun FeedScreen(navController: NavController) {
 @Composable
 fun FeedScreenPreview() {
     FeedScreen(navController = androidx.navigation.compose.rememberNavController())
-}
-
-enum class FeedType(val title: String) {
-    ALL("Все"),
-    FRIENDS("Друзья")
 }

@@ -10,6 +10,8 @@ data class Post(
     val routesCompleted: List<RouteAttempt>,
     val photoUrl: String? = "https://placehold.co/400x300/png",
     val comment: String? = null,
+    val isLiked: Boolean = false,
+    val likesCount: Int = 0
 )
 
 data class RouteAttempt(

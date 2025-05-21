@@ -210,7 +210,9 @@ object SampleData {
                 timestamp = Date().time - 2 * 24 * 60 * 60 * 1000,
                 routesCompleted = listOf(_attempts[0], _attempts[1]),
                 photoUrl = "https://placehold.co/400x300/png?text=Post+1",
-                comment = "Отличная тренировка! Наконец-то прошел 'Крутой старт'!"
+                comment = "Отличная тренировка! Наконец-то прошел 'Крутой старт'!",
+                isLiked = false,
+                likesCount = 3
             ),
             Post(
                 id = POST2_ID,
@@ -219,7 +221,9 @@ object SampleData {
                 timestamp = Date().time - 5 * 24 * 60 * 60 * 1000,
                 routesCompleted = listOf(_attempts[2], _attempts[3]),
                 photoUrl = "https://placehold.co/400x300/png?text=Post+2",
-                comment = "Новые маршруты в ВертикальМире очень интересные!"
+                comment = "Новые маршруты в ВертикальМире очень интересные!",
+                isLiked = true,
+                likesCount = 5
             )
         )
     }

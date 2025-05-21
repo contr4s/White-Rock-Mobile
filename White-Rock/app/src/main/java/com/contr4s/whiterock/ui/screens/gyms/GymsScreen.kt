@@ -20,27 +20,23 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.contr4s.whiterock.data.model.ClimbingGym
-import com.contr4s.whiterock.data.model.SampleData
 import com.contr4s.whiterock.ui.navigation.NavRoutes
 import com.contr4s.whiterock.ui.theme.Blue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.contr4s.whiterock.presentation.gyms.GymsViewModel
+import com.contr4s.whiterock.presentation.gyms.GymsIntent
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GymsScreen(navController: NavController) {
-    var searchQuery by remember { mutableStateOf("") }
-    val gyms = remember { SampleData.gyms }
-    val filteredGyms = remember(searchQuery) {
-        if (searchQuery.isBlank()) {
-            gyms
-        } else {
-            gyms.filter {
-                it.name.contains(searchQuery, ignoreCase = true) || 
-                it.city.contains(searchQuery, ignoreCase = true)
-            }
-        }
+fun GymsScreen(navController: NavController, viewModel: GymsViewModel = hiltViewModel()) {
+    val state by viewModel.container.stateFlow.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.onIntent(GymsIntent.LoadGyms)
     }
 
     Scaffold(
@@ -52,15 +48,15 @@ fun GymsScreen(navController: NavController) {
                 )
             )
         }
-    ) { paddingValues -> 
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
             OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
+                value = state.searchQuery,
+                onValueChange = { viewModel.onIntent(GymsIntent.UpdateSearchQuery(it)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -74,18 +70,24 @@ fun GymsScreen(navController: NavController) {
                 )
             )
 
-            LazyColumn(
-                modifier = Modifier.fillMaxWidth(),
-                contentPadding = PaddingValues(vertical = 8.dp)
-            ) {
-                items(filteredGyms) { gym -> 
-                    GymItem(
-                        gym = gym,
-                        onGymClick = {
-                            navController.navigate(NavRoutes.gymDetails(it.id.toString()))
-                        }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(vertical = 8.dp)
+                ) {
+                    items(state.filteredGyms) { gym ->
+                        GymItem(
+                            gym = gym,
+                            onGymClick = {
+                                navController.navigate(NavRoutes.gymDetails(it.id.toString()))
+                            }
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    }
                 }
             }
         }
